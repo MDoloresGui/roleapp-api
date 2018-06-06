@@ -51,8 +51,8 @@ function getUsers($response) {
     }
 }
 
-function getUser($request) {
-    $name = $request->getAttribute('name');
+function getUser($response) {
+    $name = $response->getAttribute('name');
     $sql = "SELECT * FROM USERS WHERE use_name='".$name."'";
     try {
         $stm = getConnection()->query($sql);
@@ -63,3 +63,40 @@ function getUser($request) {
         echo '{"error":{"text":'. $e->getMessage() .'}}';
     }
 }
+
+function postUser($request) {
+    $user = json_decode($request->getBody());
+
+    $sql = "INSERT INTO USERS (use_name, use_email, use_password, use_signup_date)
+            VALUES (:name, :email, SHA1(:password), DATE(NOW()))";
+    try {
+        $db = getConnection();
+        $stm = $db->prepare($sql);
+        $stm->bindParam("name", $user->name);
+        $stm->bindParam("email", $user->email);
+        $stm->bindParam("password", $user->password);
+        $stm->execute();
+        echo '200 OK';
+    } catch (PDOExpeption $e) {
+        echo 'error -> '.$e->getMessage();
+    }
+}
+ function changePassword($request) {
+    $name = $request->getAttribute('name');
+    $user = json_decode($request->getBody());
+
+    $sql = "UPDATE USERS SET use_password=SHA1(:password) WHERE use_name='".$name."'";
+    try {
+        $db = getConnection();
+        $stm = $db->prepare($sql);
+        $stm->bindParam("password", $user->password);
+        $stm->execute();
+        echo '200 OK';
+    } catch (PDOExpeption $e) {
+        echo 'error -> '.$e->getMessage();
+    }
+ }
+
+ function getUniverses($response) {
+     
+ }

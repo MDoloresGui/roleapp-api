@@ -14,9 +14,8 @@ $app->get('/[{name}]', function (Request $request, Response $response, array $ar
 });
 
 $app->group('/api', function () use ($app) {
-  
-  
     $app->get('/users', 'getUsers');
-    $app->get('/user/{name}', 'getUser');
-  
+    $app->get('/users/{name}', 'getUser');
+    $app->post('/users', 'postUser');
+    $app->patch('/users/{name}', 'changePassword');
 });
