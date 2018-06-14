@@ -16,6 +16,9 @@ $app->get('/[{name}]', function (Request $request, Response $response, array $ar
 $app->group('/api', function () use ($app) {
     $app->get('/users', 'getUsers');
     $app->get('/users/{name}', 'getUser');
+    $app->get('/universes', 'getUniverses');
+    $app->get('/universes/{name}', 'getUniverse');
     $app->post('/users', 'postUser');
+    $app->post('/universes', 'postUniverse');
     $app->patch('/users/{name}', 'changePassword');
 });
