@@ -110,9 +110,22 @@ function getUniverses($response) {
     }
 }
 
-function getUniverse($response) {
+function getUniverseByName($response) {
     $name = $response->getAttribute('name');
     $sql = "SELECT * FROM UNIVERSES WHERE uni_name='".$name."'";
+    try {
+        $stm = getConnection()->query($sql);
+        $universe = $stm->fetchAll(PDO::FETCH_OBJ);
+        
+        return json_encode($universe);
+    } catch(PDOException $e) {
+        echo '{"error":{"text":'. $e->getMessage() .'}}';
+    }
+}
+
+function getUniverseById($response) {
+    $name = $response->getAttribute('id');
+    $sql = "SELECT * FROM UNIVERSES WHERE uni_id='".$name."'";
     try {
         $stm = getConnection()->query($sql);
         $universe = $stm->fetchAll(PDO::FETCH_OBJ);
@@ -126,13 +139,11 @@ function getUniverse($response) {
 function postUniverse($request) {
     $uni = json_decode($request->getBody());
     $sql = "INSERT INTO UNIVERSES (uni_name, uni_image, uni_description)
-        VALUES(:name, :image, :description)";
+        VALUES(:name, 'img', 'desc')";
     try {
         $db = getConnection();
         $stm = $db->prepare($sql);
         $stm->bindParam("name", $uni->name);
-        $stm->bindParam("image", $uni->image);
-        $stm->bindParam("description", $uni->description);
         $stm->execute();
         return $db->lastInsertId();
     } catch (PDOExpeption $e) {
@@ -154,12 +165,12 @@ function getCharacters($response) {
 }
 
 function getCharactersByUser($response) {
-    $id = $response->params('user_id');
+    $id = $response->getAttribute('id');
     $sql = "SELECT * FROM CHARACTERS WHERE cha_id_user=".$id." ORDER BY cha_name";
 
     try {
         $stm = getConnection()->query($sql);
-        $characters = $stm->fetchAll(PDO::FETCH_OBJ);
+        $characters = $stm->fetchAll(PDO::FETCH_ASSOC);
         
         return json_encode($characters);
     } catch(PDOException $e) {
@@ -168,7 +179,7 @@ function getCharactersByUser($response) {
 }
 
 function getCharacter($response) {
-    $id = $response->params('id');
+    $id = $response->getAttribute('id');
     $sql = "SELECT * FROM CHARACTERS WHERE cha_id=".$id." ORDER BY cha_name";
 
     try {
@@ -182,7 +193,7 @@ function getCharacter($response) {
 }
 
 function postCharacter($request) {
-    $sql = json_decode($request->getBody());
+    $char = json_decode($request->getBody());
     $sql = "INSERT INTO CHARACTERS (cha_name, cha_avatar, cha_biography, cha_index_card, cha_id_universe, cha_id_user)
         VALUES(:name, :avatar, :biography, :index_card, :id_universe, :id_user)";
     try {
@@ -190,6 +201,7 @@ function postCharacter($request) {
         $stm = $db->prepare($sql);
         $stm->bindParam("name", $char->name);
         $stm->bindParam("avatar", $char->avatar);
+        $stm->bindParam("biography", $char->biography);
         $stm->bindParam("index_card", $char->index_card);
         $stm->bindParam("id_universe", $char->id_universe);
         $stm->bindParam("id_user", $char->id_user);
@@ -234,7 +246,7 @@ function patchCharacter($request) {
 }
 
 function getRoleLines($response) {
-    $sql = "SELECT * FROM ROLE_LINES";
+    $sql = "SELECT * FROM ROLE_LINES ORDER BY rol_last_update_date DESC";
     try {
         $stm = getConnection()->query($sql);
         $rolelines = $stm->fetchAll(PDO::FETCH_OBJ);
@@ -259,6 +271,36 @@ function getRoleLinesByCharacter($response) {
     }
 }
 
+function getRoleLinesByUser($response) {
+    $id = $response->getAttribute('id');
+    $sql = "SELECT * FROM role_lines WHERE role_lines.rol_id = 
+	ANY(SELECT role_character.rol_cha_id_rol FROM role_character WHERE role_character.rol_cha_id_char = 
+     	ANY(SELECT characters.cha_id FROM characters WHERE characters.cha_id_user = ".$id.")
+     )";
+
+     try {
+        $stm = getConnection()->query($sql);
+        $res = $stm->fetchAll(PDO::FETCH_OBJ);
+
+        return json_encode($res);
+    } catch (PDOException $e) {
+        return $e;
+    }
+}
+
+function getRoleLinesByRegex($response) {
+    $cad = $response->getAttribute('regex');
+    $sql = "SELECT * FROM `role_lines` WHERE rol_title REGEXP '".$cad."' ORDER BY rol_last_update_date DESC";
+    try {
+        $stm = getConnection()->query($sql);
+        $res = $stm->fetchAll(PDO::FETCH_OBJ);
+
+        return json_encode($res);
+    } catch (PDOException $e) {
+        return $e;
+    }
+}
+
 function getRoleLinesByMaster($response) {
     $id = $response->params('id');
     $sql = "SELECT * FROM ROLE_LINES WHERE rol_id_master=".$id;
@@ -269,5 +311,41 @@ function getRoleLinesByMaster($response) {
         return json_encode($res);
     } catch (PDOException $e) {
         return $e;
+    }
+}
+
+function postRoleLine($request) {
+    $role = json_decode($request->getBody());
+    $sql = "INSERT INTO ROLE_LINES(rol_title, rol_creation_date, rol_last_update_date, rol_id_master, rol_id_universe, rol_description)
+        VALUES(:title, DATE(NOW()), DATE(NOW()), :master_id, :universe_id, :rol_desc)";
+    try {
+        $db = getConnection();
+        $stm = $db->prepare($sql);
+        $stm->bindParam("title", $role->title);
+        $stm->bindParam("master_id", $role->master_id);
+        $stm->bindParam("universe_id", $role->universe_id);
+        $stm->bindParam("rol_desc", $role->rol_desc);
+        $stm->execute();
+
+        return $db->lastInsertId();
+    } catch (PDOException $e) {
+        return 'error -> '.$e->getMessage();
+    }
+}
+
+function postCharRoleLine($request) {
+    $rolchar = json_decode($request->getBody());
+    $sql = "INSERT INTO ROLE_CHARACTER(rol_cha_id_rol, rol_cha_id_char)
+    VALUES(:id_rol, :id_char)";
+    try {
+        $db = getConnection();
+        $stm = $db->prepare($sql);
+        $stm->bindParam("id_rol", $rolchar->id_rol);
+        $stm->bindParam("id_char", $rolchar->id_char);
+        $stm->execute();
+
+        return $db->lastInsertId();
+    } catch (PDOException $e) {
+        return 'error -> '.$e->getMessage();
     }
 }
