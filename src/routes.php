@@ -25,11 +25,14 @@ $app->group('/api', function () use ($app) {
     $app->get('/users/{id}/rolelines', 'getRoleLinesByUser');
     $app->get('/rolelines/byregexp/{regex}', 'getRoleLinesByRegex');
     $app->get('/rolelines/byregexp/', 'getRoleLines');
+    $app->get('/rolelines/{id}/participants', 'getCharRoleLineByRoleLine');
+    $app->get('/rolelines/{id}/posts', 'getPostsByRoleLine');
     $app->post('/users', 'postUser');
     $app->post('/rolechars', 'postCharRoleLine');
     $app->post('/characters', 'postCharacter');
     $app->post('/universes', 'postUniverse');
     $app->post('/rolelines', 'postRoleLine');
+    $app->post('/posts', 'postPost');
     
     $app->patch('/users/{name}', 'changePassword');
 });

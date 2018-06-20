@@ -180,7 +180,7 @@ function getCharactersByUser($response) {
 
 function getCharacter($response) {
     $id = $response->getAttribute('id');
-    $sql = "SELECT * FROM CHARACTERS WHERE cha_id=".$id." ORDER BY cha_name";
+    $sql = "SELECT * FROM CHARACTERS WHERE cha_id=".$id;
 
     try {
         $stm = getConnection()->query($sql);
@@ -213,7 +213,7 @@ function postCharacter($request) {
 }
 
 function deleteCharacter($request) {
-    $id = $request->params('id');
+    $id = $request->getAttribute('id');
     $sql = "DELETE FROM CHARACTERS WHERE cha_id=".$id;
     try {
         $db = getConnection();
@@ -258,7 +258,7 @@ function getRoleLines($response) {
 }
 
 function getRoleLinesByCharacter($response) {
-    $id = $response->params('id');
+    $id = $response->getAttribute('id');
     $sql = "SELECT * FROM ROLE_LINES WHERE rol_id=ANY(
         SELECT rol_cha_id_rol FROM ROLE_CHARACTER WHERE rol_cha_id_char=".$id.")";
     try {
@@ -302,7 +302,7 @@ function getRoleLinesByRegex($response) {
 }
 
 function getRoleLinesByMaster($response) {
-    $id = $response->params('id');
+    $id = $response->getAttribute('id');
     $sql = "SELECT * FROM ROLE_LINES WHERE rol_id_master=".$id;
     try {
         $stm = getConnection()->query($sql);
@@ -342,6 +342,54 @@ function postCharRoleLine($request) {
         $stm = $db->prepare($sql);
         $stm->bindParam("id_rol", $rolchar->id_rol);
         $stm->bindParam("id_char", $rolchar->id_char);
+        $stm->execute();
+
+        return $db->lastInsertId();
+    } catch (PDOException $e) {
+        return 'error -> '.$e->getMessage();
+    }
+}
+
+function getCharRoleLineByRoleLine($response) {
+    $roleline = $response->getAttribute('id');
+    $sql = "SELECT rol_cha_id_char FROM role_character WHERE rol_cha_id_rol = ".$roleline;
+    try {
+        $stm = getConnection()->query($sql);
+        $res = $stm->fetchAll(PDO::FETCH_OBJ);
+
+        return json_encode($res);
+    } catch (PDOException $e) {
+        return $e;
+    }
+}
+
+function getPostsByRoleLine($response) {
+    $roleline = $response->getAttribute('id');
+    $sql = "SELECT * FROM posts WHERE pos_id_rol = ".$roleline." ORDER BY pos_id DESC";
+    try {
+        $stm = getConnection()->query($sql);
+        $res = $stm->fetchAll(PDO::FETCH_OBJ);
+
+        return json_encode($res);
+    } catch (PDOException $e) {
+        return $e;
+    }
+}
+
+function postPost($request) {
+    $post = json_decode($request->getBody());
+    $sql = "INSERT INTO posts(pos_creation_date, pos_content, pos_id_rol, pos_id_char)
+        VALUES(DATE(NOW()), :content, :id_rol, :id_char)";
+    $sql2 = "UPDATE role_lines SET rol_last_update_date = DATE(NOW()) WHERE rol_id = :id_rol";
+    try {
+        $db = getConnection();
+        $stm = $db->prepare($sql);
+        $stm->bindParam("content", $post->content);
+        $stm->bindParam("id_char", $post->id_char);
+        $stm->bindParam("id_rol", $post->id_rol);
+        $stm->execute();
+        $stm = $db->prepare($sql2);
+        $stm->bindParam("id_rol", $post->id_rol);
         $stm->execute();
 
         return $db->lastInsertId();
